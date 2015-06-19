@@ -29,6 +29,9 @@
  */
 + (NSManagedObjectContext *) MR_rootSavingContext;
 
+
++ (NSManagedObjectContext *) MR_changeObservingContext;
+
 /**
  @discussion Please do not use this context for saving changes, as it will block the main thread when doing so.
 

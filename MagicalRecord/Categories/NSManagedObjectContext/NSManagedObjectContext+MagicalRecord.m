@@ -17,6 +17,7 @@ static NSString * const MagicalRecordContextWorkingName = @"MagicalRecordContext
 
 static NSManagedObjectContext *MagicalRecordRootSavingContext;
 static NSManagedObjectContext *MagicalRecordDefaultContext;
+static NSManagedObjectContext *TMChangeObservingContext;
 
 static id MagicalRecordUbiquitySetupNotificationObserver;
 
@@ -32,10 +33,14 @@ static id MagicalRecordUbiquitySetupNotificationObserver;
         NSManagedObjectContext *rootContext = [self MR_contextWithStoreCoordinator:coordinator];
         [self MR_setRootSavingContext:rootContext];
 
+        NSManagedObjectContext *changeObservingContext = [self MR_newPrivateQueueContext];
+        [self MR_setChangeObservingContext:changeObservingContext];
+        [changeObservingContext setParentContext:rootContext];
+
         NSManagedObjectContext *defaultContext = [self MR_newMainQueueContext];
         [self MR_setDefaultContext:defaultContext];
 
-        [defaultContext setParentContext:rootContext];
+        [defaultContext setParentContext:changeObservingContext];
     }
 }
 
@@ -54,11 +59,15 @@ static id MagicalRecordUbiquitySetupNotificationObserver;
     return MagicalRecordRootSavingContext;
 }
 
++ (NSManagedObjectContext *)MR_changeObservingContext {
+    return TMChangeObservingContext;
+}
+
 #pragma mark - Context Creation
 
 + (NSManagedObjectContext *) MR_context
 {
-    return [self MR_contextWithParent:[self MR_rootSavingContext]];
+    return [self MR_contextWithParent:[self MR_changeObservingContext]];
 }
 
 + (NSManagedObjectContext *) MR_contextWithParent:(NSManagedObjectContext *)parentContext
@@ -294,6 +303,20 @@ static id MagicalRecordUbiquitySetupNotificationObserver;
     }];
 
     MRLogInfo(@"Set root saving context: %@", MagicalRecordRootSavingContext);
+}
+
++ (void)MR_setChangeObservingContext:(NSManagedObjectContext *)context {
+    if (TMChangeObservingContext) {
+        [[NSNotificationCenter defaultCenter] removeObserver:TMChangeObservingContext];
+    }
+
+    TMChangeObservingContext = context;
+
+    [TMChangeObservingContext performBlock:^{
+        [TMChangeObservingContext MR_obtainPermanentIDsBeforeSaving];
+        [TMChangeObservingContext setMergePolicy:NSMergeByPropertyObjectTrumpMergePolicy];
+        [TMChangeObservingContext MR_setWorkingName:@"TMCoreData Change Observing Context"];
+    }];
 }
 
 @end
