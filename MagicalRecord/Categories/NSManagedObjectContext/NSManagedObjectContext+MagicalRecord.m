@@ -217,6 +217,7 @@ static id MagicalRecordUbiquitySetupNotificationObserver;
         [[[self MR_defaultContext] objectWithID:[object objectID]] willAccessValueForKey:nil];
     }
 
+    [[self MR_changeObservingContext] mergeChangesFromContextDidSaveNotification:notification];
     [[self MR_defaultContext] mergeChangesFromContextDidSaveNotification:notification];
 }
 
@@ -311,7 +312,7 @@ static id MagicalRecordUbiquitySetupNotificationObserver;
     }
 
     TMChangeObservingContext = context;
-
+    
     [TMChangeObservingContext performBlock:^{
         [TMChangeObservingContext MR_obtainPermanentIDsBeforeSaving];
         [TMChangeObservingContext setMergePolicy:NSMergeByPropertyObjectTrumpMergePolicy];
